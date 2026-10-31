@@ -1,0 +1,21 @@
+# Large dataset files & caches (Must NOT be tracked in Git)
+data/
+*.hdf5
+*.index
+*.bin
+
+# Virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE & temporary logs
+.pytest_cache/
+*.log
+
+# Assignment prompt & local plan
+Assignment 3 Benchmarking Approximate Nearest Neighbour Search.md
+Assignment 3 Benchmarking Approximate Nearest Neighbour Search.pdf
+plan.md
