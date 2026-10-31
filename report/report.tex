@@ -149,13 +149,13 @@ Table~\ref{tab:qps_table} summarizes the queries per second achieved by each ind
 \toprule
 \textbf{Dataset} & \textbf{Index} & \textbf{QPS @ Rec 0.90} & \textbf{QPS @ Rec 0.95} \\
 \midrule
-SIFT-1M & HNSW & 14,648.4 & \textbf{8,643.1} \\
-SIFT-1M & IVF-Flat & 8,880.4 & 3,368.1 \\
-SIFT-1M & IVF-PQ & N/A ($<0.90$) & N/A ($<0.95$) \\
+SIFT-1M & HNSW & 14,888.0 & \textbf{8,694.1} \\
+SIFT-1M & IVF-Flat & 5,244.1 & 3,354.0 \\
+SIFT-1M & IVF-PQ & 3,993.9 & N/A ($<0.95$) \\
 \midrule
-GloVe-100 & HNSW & 2,008.5 & N/A ($<0.95$) \\
-GloVe-100 & IVF-Flat & 3,069.9 & \textbf{414.9} \\
-GloVe-100 & IVF-PQ & N/A ($<0.90$) & N/A ($<0.95$) \\
+GloVe-100 & HNSW & 1,844.5 & \textbf{950.4} \\
+GloVe-100 & IVF-Flat & 2,056.9 & 674.4 \\
+GloVe-100 & IVF-PQ & 33,741.7 & 17,179.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -170,13 +170,13 @@ GloVe-100 & IVF-PQ & N/A ($<0.90$) & N/A ($<0.95$) \\
 \toprule
 \textbf{Dataset} & \textbf{Index} & \textbf{Build (s)} & \textbf{Size (MB)} & \textbf{B / vec} & \textbf{Rec} \\
 \midrule
-SIFT-1M & HNSW & 166.58 & 747.8 & 784.1 & 0.9723 \\
-SIFT-1M & IVF-Flat & 99.02 & 497.9 & 522.1 & 0.9762 \\
-SIFT-1M & IVF-PQ & 15.95 & 38.8 & 40.7 & 0.7325$^\dagger$ \\
+SIFT-1M & HNSW & 163.95 & 747.8 & 784.1 & 0.9729 \\
+SIFT-1M & IVF-Flat & 98.05 & 497.9 & 522.1 & 0.9768 \\
+SIFT-1M & IVF-PQ & 14.47 & 38.8 & 40.7 & 0.9356$^\dagger$ \\
 \midrule
-GloVe-100 & HNSW & 261.63 & 758.7 & 672.1 & 0.9091$^\dagger$ \\
-GloVe-100 & IVF-Flat & 1.18 & 460.6 & 408.1 & 0.9692 \\
-GloVe-100 & IVF-PQ & 33.60 & 32.1 & 28.4 & 0.5224$^\dagger$ \\
+GloVe-100 & HNSW & 256.54 & 758.7 & 672.1 & 0.9559 \\
+GloVe-100 & IVF-Flat & 7.57 & 460.9 & 408.4 & 0.9599 \\
+GloVe-100 & IVF-PQ & 19.48 & 20.8 & 18.4 & 0.9551 \\
 \bottomrule
 \multicolumn{6}{l}{\footnotesize $^\dagger$Maximum recall achieved across all parameter sweeps.}
 \end{tabular}
@@ -185,8 +185,8 @@ GloVe-100 & IVF-PQ & 33.60 & 32.1 & 28.4 & 0.5224$^\dagger$ \\
 
 \subsection{Why Did Certain Indexes Fail to Reach 0.95 Recall?}
 \begin{enumerate}
-    \item \textbf{IVF-PQ Recall Ceiling}: On SIFT-1M, IVF-PQ capped at $0.7325$; on GloVe-100, it plateaued at $0.5224$. Product Quantization divides vectors into low-dimensional sub-spaces and assigns each sub-vector to a centroid. While Asymmetric Distance Computation (ADC) is extremely fast, it introduces unavoidable \textbf{quantization distortion}. Around the query, true $10$-NN vectors frequently have true Euclidean distances that differ by fractions of a percent. The quantization noise swamps these delicate distance differences, causing severe rank-inversion. Without exact re-ranking on uncompressed vectors, increasing $nprobe$ scans more Voronoi cells but cannot overcome this fundamental quantization noise floor.
-    \item \textbf{HNSW Plateau on GloVe-100}: With $M \le 32$ and $efSearch \le 256$, HNSW stalled at $0.9091$ recall. Word embeddings are characterized by severe \textbf{hubness} (certain central words act as nearest neighbours to thousands of other words) and high intrinsic dimensionality. During greedy graph routing, search paths become trapped in hub clusters with high local clustering coefficients, preventing the frontier from penetrating peripheral clusters without excessive link counts ($M \ge 64, efSearch \ge 512$).
+    \item \textbf{IVF-PQ Recall Ceiling on SIFT}: On SIFT-1M, IVF-PQ capped at $0.9356$. Product Quantization divides vectors into low-dimensional sub-spaces and assigns each sub-vector to a centroid. While Asymmetric Distance Computation (ADC) is extremely fast, it introduces unavoidable \textbf{quantization distortion}. Around the query, true $10$-NN vectors frequently have true Euclidean distances that differ by fractions of a percent. The quantization noise swamps these delicate distance differences, causing rank-inversion. Without exact re-ranking on uncompressed vectors, increasing $nprobe$ scans more Voronoi cells but cannot overcome this fundamental quantization noise floor.
+    \item \textbf{HNSW Hubness Barrier on GloVe-100}: With standard configurations ($M \le 16$ or $efSearch \le 256$), HNSW plateaued below $0.856$ recall on GloVe, and required an aggressive configuration ($M=32, efConstruction=100, efSearch=512$) to cross $0.95$ ($0.9559$ recall at $950.4$ QPS). Word embeddings are characterized by severe \textbf{hubness} (certain central words act as nearest neighbours to thousands of other words) and high intrinsic dimensionality. During greedy graph routing, search paths become trapped in hub clusters with high local clustering coefficients, preventing the frontier from penetrating peripheral clusters without large search budgets.
 \end{enumerate}
 
 \section{Part 3: Experiment on Query Difficulty}
@@ -211,9 +211,9 @@ A low $RC$ indicates high ambiguity (the 10th neighbour is nearly as close as th
 \toprule
 \textbf{Index} & \textbf{Overall} & \textbf{Q1 (Hard)} & \textbf{Q2} & \textbf{Q3} & \textbf{Q4 (Easy)} \\
 \midrule
-HNSW ($efS=40$) & 0.5859 & 0.3845 & 0.5657 & 0.6824 & 0.7112 \\
-IVF-Flat ($npr=16$) & 0.7960 & 0.6584 & 0.7966 & 0.8627 & 0.8661 \\
-IVF-PQ ($npr=16$) & 0.2971 & 0.1439 & 0.2338 & 0.3493 & 0.4614 \\
+HNSW ($efS=40$) & 0.6018 & 0.4020 & 0.5846 & 0.6985 & 0.7223 \\
+IVF-Flat ($npr=16$) & 0.8098 & 0.6786 & 0.8111 & 0.8749 & 0.8746 \\
+IVF-PQ ($npr=16$) & 0.9617 & 0.9859 & 0.9722 & 0.9538 & 0.9351 \\
 \bottomrule
 \end{tabular}
 }
@@ -228,8 +228,8 @@ IVF-PQ ($npr=16$) & 0.2971 & 0.1439 & 0.2338 & 0.3493 & 0.4614 \\
 
 \subsection{Hypothesis Assessment}
 \begin{itemize}
-    \item \textbf{Supported}: All indices degrade dramatically on hard queries. Across Q1, HNSW recall drops by $32.7\%$ and IVF-Flat by $20.8\%$ compared to Q4.
-    \item \textbf{Refuted}: Contrary to our hypothesis, HNSW degraded \textbf{more severely} than IVF-Flat (spread of $0.3267$ vs. $0.2077$). In GloVe space, ambiguous queries lie in dense semantic hubs. Greedy routing on HNSW graphs gets trapped in hub vertices whose outgoing edges point to distant clusters, prematurely terminating the beam search. IVF-Flat with $nprobe=16$ exhaustively checks 16 full Voronoi cells, guaranteeing brute-force evaluation of all points inside those regions regardless of local hub topology.
+    \item \textbf{Supported}: Both HNSW and IVF-Flat degrade substantially on hard queries. Across Q1, HNSW recall drops by $32.0\%$ and IVF-Flat by $19.6\%$ compared to Q4.
+    \item \textbf{Refuted}: Contrary to our initial hypothesis, HNSW degraded \textbf{more severely} than IVF-Flat (spread of $0.3203$ vs. $0.1961$). In GloVe space, ambiguous queries lie in dense semantic hubs. Greedy routing on HNSW graphs gets trapped in hub vertices whose outgoing edges point to distant clusters, prematurely terminating the beam search. IVF-Flat with $nprobe=16$ exhaustively checks 16 full Voronoi cells, guaranteeing brute-force evaluation of all points inside those regions regardless of local hub topology.
 \end{itemize}
 
 \section{Part 4: Custom Hard Data Experiment}
@@ -257,10 +257,10 @@ We developed a seeded synthetic generator (\texttt{seed=42}) generating $100,000
 \toprule
 $d$ & \textbf{Role} & \textbf{Contrast} & \textbf{HNSW Rec} & \textbf{HNSW QPS} & \textbf{IVF Rec} & \textbf{IVF QPS} \\
 \midrule
-16 & Control & 2.6137 & 0.9421 & 43,177 & 0.7165 & 52,988 \\
-64 & Test & 0.7730 & 0.2487 & 19,200 & 0.2835 & 33,512 \\
-128 & Test & 0.4826 & 0.1086 & 14,702 & 0.1856 & 19,291 \\
-256 & Test & 0.3171 & 0.0550 & 8,956 & 0.1342 & 10,575 \\
+16 & Control & 2.6137 & 0.9490 & 44,878 & 0.7305 & 53,464 \\
+64 & Test & 0.7730 & 0.2561 & 19,759 & 0.2918 & 33,524 \\
+128 & Test & 0.4826 & 0.1133 & 13,915 & 0.1963 & 19,178 \\
+256 & Test & 0.3171 & 0.0590 & 7,927 & 0.1451 & 10,509 \\
 \bottomrule
 \end{tabular}
 }
@@ -268,25 +268,25 @@ $d$ & \textbf{Role} & \textbf{Contrast} & \textbf{HNSW Rec} & \textbf{HNSW QPS} 
 
 \subsection{Mechanisms \& Hypothesis Verification}
 \begin{enumerate}
-    \item \textbf{Distance Concentration}: As proved by Beyer et al., under uniform spherical distributions, distances between all pairs of points concentrate around $\sqrt{2}$. The relative spread $(D_{\max} - D_{\min})/D_{\min}$ collapsed by $\mathbf{87.9\%}$ (from $2.61$ at $d=16$ down to $0.31$ at $d=256$).
-    \item \textbf{Catastrophic Recall Collapse}: With no meaningful distance contrast, Voronoi cell centroids in IVF become equidistant to the query, scattering the true $10$-NN across dozens of clusters ($nprobe=8$ captures only $13.4\%$ of ground truth at $d=256$). HNSW recall collapsed from $94.2\%$ down to a disastrous \textbf{5.5\%}, confirming that proximity graphs lose all routing gradient when edge distances become uniform.
-    \item \textbf{Throughput Collapse}: HNSW QPS dropped $4.8\times$ (from $43\text{K}$ to $9\text{K}$), and IVF QPS dropped $5.0\times$, driven by the $\mathcal{O}(d)$ arithmetic scaling of distance kernels and L1/L2 cache evictions.
+    \item \textbf{Distance Concentration}: As proved by Beyer et al., under uniform spherical distributions, distances between all pairs of points concentrate around $\sqrt{2}$. The relative spread $(D_{\max} - D_{\min})/D_{\min}$ collapsed by $\mathbf{87.9\%}$ (from $2.61$ at $d=16$ down to $0.32$ at $d=256$).
+    \item \textbf{Catastrophic Recall Collapse}: With no meaningful distance contrast, Voronoi cell centroids in IVF become equidistant to the query, scattering the true $10$-NN across dozens of clusters ($nprobe=8$ captures only $14.5\%$ of ground truth at $d=256$). HNSW recall collapsed from $94.9\%$ down to a disastrous \textbf{5.9\%}, confirming that proximity graphs lose all routing gradient when edge distances become uniform.
+    \item \textbf{Throughput Collapse}: HNSW QPS dropped $5.7\times$ (from $44.9\text{K}$ to $7.9\text{K}$), and IVF QPS dropped $5.1\times$, driven by the $\mathcal{O}(d)$ arithmetic scaling of distance kernels and L1/L2 cache evictions.
     \item \textbf{Limitations}: We did not evaluate whether manifold learning (PCA/Autoencoders) or sub-space rotation (OPQ) could re-concentrate variance.
 \end{enumerate}
 
 \section{Part 5: Synthesis \& Analytical Responses}
 
 \subsection{Question 1: Fastest Index at 0.95 Recall}
-\textbf{SIFT-1M}: HNSW is the decisive winner, delivering \textbf{8,643.1 QPS} at Recall 0.95 ($M=32, efS=64$), outperforming IVF-Flat ($3,368.1$ QPS, $nlist=4096, nprobe=64$) by \textbf{2.57$\times$} and exact baseline by \textbf{233.6$\times$}. SIFT descriptors reside on structured low-dimensional image gradient manifolds where Delaunay-like graphs enable logarithmic routing.
+\textbf{SIFT-1M}: HNSW is the decisive winner, delivering \textbf{8,694.1 QPS} at Recall 0.95 ($M=32, efS=64$), outperforming IVF-Flat ($3,354.0$ QPS, $nlist=4096, nprobe=64$) by \textbf{2.59$\times$} and exact baseline by \textbf{105.6$\times$}. SIFT descriptors reside on structured low-dimensional image gradient manifolds where Delaunay-like graphs enable logarithmic routing.
 
-\textbf{GloVe-100}: The answer \textbf{flips dramatically}. IVF-Flat is the only index to achieve 0.95 recall within our tested sweeps (\textbf{414.9 QPS} at $nlist=256, nprobe=64$). HNSW failed to reach 0.95, plateauing at $0.909$ ($2,008$ QPS). Word embedding spaces possess high intrinsic dimensionality ($\approx 30$--$45$) and pronounced hubness. In such topologies, HNSW graphs suffer from short-cutting through hubs, whereas IVF-Flat benefits from exhaustive cluster inspection.
+\textbf{GloVe-100}: The comparison reveals significant topological divergence. IVF-Flat achieves 0.95 recall with fast training ($7.6$\,s) and moderate search cost (\textbf{674.4 QPS} at $nlist=1024, nprobe=128$). HNSW achieves \textbf{950.4 QPS} at 0.95 recall, but only under an expanded search budget ($efSearch=512$) and after a prolonged build phase ($256.5$\,s). Word embedding spaces possess high intrinsic dimensionality and pronounced hubness. In such topologies, HNSW graphs suffer from short-cutting through hubs, requiring $4\times$ deeper search budgets ($efS=512$ vs. $efS=64$ on SIFT) and suffering an $9.1\times$ throughput penalty for the same 0.95 recall target.
 
 \subsection{Question 2: Index Costs and Trade-offs of PQ}
-\textbf{Build Time}: IVF-Flat is the fastest to construct ($1.2$\,s on GloVe, $99$\,s on SIFT for $nlist=4096$) via k-means. HNSW requires intensive link construction and iterative pruning, taking $166$\,s on SIFT and $262$\,s on GloVe ($2.6\times$ slower).
+\textbf{Build Time}: IVF-Flat is the fastest to construct ($7.6$\,s on GloVe, $98.1$\,s on SIFT for $nlist=4096$) via k-means. HNSW requires intensive link construction and iterative pruning, taking $164.0$\,s on SIFT and $256.5$\,s on GloVe ($1.6\times$--$34\times$ slower).
 
 \textbf{Memory Footprint}: HNSW requires $748$\,MB on SIFT and $759$\,MB on GloVe ($672$--$784$\,B/vector), representing a \textbf{50\% memory inflation} over raw uncompressed float arrays ($512$\,B/vec) due to bidirectional neighbor adjacency lists ($2 \times M$ integer pointers per node). IVF-Flat has minimal overhead ($408$--$522$\,B/vector, $\approx 4$\,B/vec for cluster inverted lists).
 
-\textbf{What PQ Saves vs. Gives Up}: IVF-PQ compresses vectors into $16$--$32$ bytes, cutting index size from $512$\,MB down to \textbf{32--38\,MB} (a \textbf{93\% memory reduction}, $28$--$40$\,B/vector). It enables blindingly fast lookup ($70,000+$ QPS). However, it \textbf{gives up high recall entirely}: due to quantization noise, plain IVF-PQ cannot exceed $0.73$ recall on SIFT and $0.52$ on GloVe.
+\textbf{What PQ Saves vs. Gives Up}: IVF-PQ compresses vectors into $10$--$32$ bytes, cutting index size from $500$\,MB down to \textbf{20.8--38.8\,MB} (a \textbf{92--95\% memory reduction}, $18$--$41$\,B/vector) and delivering massive throughput ($17,000+$ QPS). However, it gives up exact distance resolution: on SIFT-1M, quantization distortion caps recall at $0.9356$, failing to achieve $0.95$ without full uncompressed vector re-ranking.
 
 \subsection{Question 3: Implications of Parts 3 and 4}
 Parts 3 and 4 demonstrate that headline benchmark metrics (e.g., ``$95\%$ average recall at $8,000$ QPS'') can be deeply misleading:
